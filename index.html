@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GB Demand — June 2026</title>
+<title>GB Grid — Summer 2026</title>
 <style>
   html, body { height: 100%; }
   body { font-family: system-ui, sans-serif; margin: 0; padding: 12px; background: #f5f5f5; box-sizing: border-box; }
@@ -17,77 +17,114 @@
 </head>
 <body>
 <div class="container">
-  <h1>GB Electricity Demand vs Temperature (14–25 June 2026)</h1>
+  <h1>GB Grid: Demand, Generation & Temperature (14 Jun – 16 Jul 2026)</h1>
   <div class="chart-wrap"><canvas id="demand"></canvas></div>
 </div>
 <script>
-const COLORS = { demand: '#d62728', temp: '#ff6600', tempMax: '#cc0000', tempMin: '#3399ff' };
+const COLORS = { demand: '#d62728', demandDaily: '#333', tempMax: '#cc0000', genAvail: '#2ca02c', genAvailDaily: '#1a8c1a', surplus: '#9467bd' };
 
 const X_MIN = '2026-06-14T00:00';
-const X_MAX = '2026-06-25T23:30';
+const X_MAX = '2026-07-16T00:00';
+const HALF_HOURLY_END = '2026-06-25T23:30';
+
+const EMN_DATES = ['2026-06-24', '2026-07-09'];
 
 function makeDataset(label, color, data, extra = {}) {
-  return { label, data, borderColor: color, backgroundColor: color + '20', borderWidth: 1, pointRadius: 0, fill: false, tension: 0.1, ...extra };
+  return { label, data, borderColor: color, backgroundColor: color + '20', borderWidth: 2, pointRadius: 0, fill: false, tension: 0.1, ...extra };
 }
 
 Promise.all([
   fetch('data/clean/demand.json').then(r => r.json()),
   fetch('data/clean/temperatures.json').then(r => r.json()),
-]).then(([rows, temps]) => {
-  const demandData = rows
-    .filter(r => r.datetime >= '2026-06-14' && r.datetime <= '2026-06-25T23:59')
-    .map(r => ({x: r.datetime, y: r.demand}));
+  fetch('data/clean/opmr.json').then(r => r.json()),
+]).then(([rows, temps, opmr]) => {
+
+  // --- Half-hourly data (Jun 14-25) ---
+  const demandHH = rows.map(r => ({x: r.datetime, y: r.demand}));
 
   const daily = {};
   rows.forEach(r => {
-    if (r.datetime < '2026-06-14' || r.datetime > '2026-06-25T23:59') return;
     const day = r.datetime.slice(0, 10);
     if (!daily[day]) daily[day] = [];
     daily[day].push(r.demand);
   });
-  const dailyAvg = Object.entries(daily).map(([day, vals]) => {
-    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-    return { x: day + 'T00:00', y: avg };
-  });
+  const dailyAvgHH = Object.entries(daily).map(([day, vals]) => ({
+    x: day + 'T00:00',
+    y: Math.round(vals.reduce((a, b) => a + b, 0) / vals.length),
+  }));
 
-  const n = dailyAvg.length;
-  const xs = dailyAvg.map((p, i) => i);
-  const ys = dailyAvg.map(p => p.y);
-  const xMean = xs.reduce((a, b) => a + b, 0) / n;
-  const yMean = ys.reduce((a, b) => a + b, 0) / n;
-  let num = 0, den = 0;
-  for (let i = 0; i < n; i++) { num += (xs[i] - xMean) * (ys[i] - yMean); den += (xs[i] - xMean) ** 2; }
-  const slope = num / den;
-  const intercept = yMean - slope * xMean;
-  const trendData = dailyAvg.map((p, i) => ({ x: p.x, y: slope * i + intercept }));
+  // --- Daily OPMR data (Jun 14 - Jul 16) ---
+  const dailyAvgAll = opmr.map(o => ({x: o.date + 'T00:00', y: o.peak_demand_forecast}));
+  const genAvailAll = opmr.map(o => ({x: o.date + 'T00:00', y: o.generator_availability}));
+  const surplusAll = opmr.map(o => ({x: o.date + 'T00:00', y: o.national_surplus}));
 
-  const tempMean = temps.map(t => ({x: t.date + 'T12:00', y: t.mean}));
-  const tempMax = temps.map(t => ({x: t.date + 'T12:00', y: t.max}));
-  const tempMin = temps.map(t => ({x: t.date + 'T12:00', y: t.min}));
+  // Daily average demand: use half-hourly actuals for Jun 14-25, OPMR forecast for Jun 26-Jul 16
+  const dailyAvgCombined = [
+    ...dailyAvgHH,
+    ...dailyAvgAll.filter(d => d.x.slice(0,10) > '2026-06-25'),
+  ];
+
+  // Temperature
+  const tempMax = temps.map(t => ({x: t.date + 'T00:00', y: t.max}));
 
   new Chart(document.getElementById('demand'), {
     type: 'line',
     data: { datasets: [
-      { ...makeDataset('National Demand', COLORS.demand, demandData, { fill: true, hidden: true }) },
+
+      // Daily average demand
       {
-        label: 'Daily Average Demand',
-        data: dailyAvg,
-        borderColor: '#333',
-        backgroundColor: '#333',
+        label: 'Daily Avg Demand',
+        data: dailyAvgHH,
+        borderColor: COLORS.demandDaily,
+        backgroundColor: COLORS.demandDaily,
         showLine: true,
         pointRadius: 5,
         pointHoverRadius: 7,
-        yAxisID: 'y',
         borderWidth: 2,
         fill: false,
         tension: 0.1,
+        yAxisID: 'y',
+        hidden: true,
       },
+
+      // Generator availability (full range)
+      {
+        label: 'Generator Availability (MW)',
+        data: genAvailAll,
+        borderColor: COLORS.genAvail,
+        backgroundColor: COLORS.genAvail,
+        showLine: true,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        borderWidth: 2,
+        fill: false,
+        tension: 0.1,
+        yAxisID: 'y',
+        hidden: true,
+      },
+
+      // Generation margin (generator availability - demand)
+      {
+        label: 'Generation - Demand (MW)',
+        data: opmr.map(o => ({x: o.date + 'T00:00', y: o.generator_availability - o.peak_demand_forecast})),
+        borderColor: '#ff7f0e',
+        backgroundColor: '#ff7f0e20',
+        showLine: true,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        borderWidth: 2,
+        fill: false,
+        tension: 0.2,
+        yAxisID: 'y',
+      },
+
+      // Temperature on secondary axis
       makeDataset('Daily Max Temp (°C)', COLORS.tempMax, tempMax, {
         yAxisID: 'y1',
         pointRadius: 4,
         pointHoverRadius: 6,
-        borderWidth: 2,
       }),
+
     ]},
     options: {
       responsive: true,
@@ -99,7 +136,34 @@ Promise.all([
           max: X_MAX,
           time: { unit: 'day', displayFormats: { day: 'd MMM' } },
           title: { display: true, text: 'Date' },
-          grid: { color: '#eee' },
+          grid: {
+            color: (ctx) => {
+              const d = ctx.tick?.value;
+              if (!d) return '#eee';
+              const ds = new Date(d).toISOString().slice(0,10);
+              return EMN_DATES.includes(ds) ? '#1f77b4' : '#eee';
+            },
+            lineWidth: (ctx) => {
+              const d = ctx.tick?.value;
+              if (!d) return 1;
+              const ds = new Date(d).toISOString().slice(0,10);
+              return EMN_DATES.includes(ds) ? 2 : 1;
+            },
+          },
+          ticks: {
+            font: (ctx) => {
+              const d = ctx.tick?.value;
+              if (!d) return { size: 12 };
+              const ds = new Date(d).toISOString().slice(0,10);
+              return EMN_DATES.includes(ds) ? { size: 13, weight: 'bold' } : { size: 12 };
+            },
+            color: (ctx) => {
+              const d = ctx.tick?.value;
+              if (!d) return '#666';
+              const ds = new Date(d).toISOString().slice(0,10);
+              return EMN_DATES.includes(ds) ? '#1f77b4' : '#666';
+            },
+          },
         },
         y: {
           type: 'linear',
@@ -115,7 +179,7 @@ Promise.all([
         },
       },
       plugins: {
-        legend: { display: true, position: 'top', onClick: Chart.defaults.plugins.legend.onClick, labels: { usePointStyle: true, padding: 20, font: { size: 13 } } },
+        legend: { display: true, position: 'top', onClick: Chart.defaults.plugins.legend.onClick, labels: { usePointStyle: true, padding: 16, font: { size: 12 } } },
         tooltip: { mode: 'index', intersect: false },
       },
       interaction: { mode: 'index', intersect: false },
