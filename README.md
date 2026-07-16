@@ -1,4 +1,4 @@
-# energy
+# uk-grid-heatwave-2026
 
 How close did the UK grid come to breaking during the 2026 summer heatwaves?
 
