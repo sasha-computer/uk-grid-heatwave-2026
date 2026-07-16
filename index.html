@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GB Demand — June 2026</title>
+<style>
+  html, body { height: 100%; }
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 12px; background: #f5f5f5; box-sizing: border-box; }
+  .container { width: 100%; height: 100%; display: flex; flex-direction: column; }
+  h1 { font-size: 16px; margin: 0 0 8px 0; flex-shrink: 0; }
+  .chart-wrap { background: #fff; border-radius: 8px; padding: 12px; flex: 1; box-shadow: 0 1px 3px rgba(0,0,0,0.1); min-height: 0; }
+  .chart-wrap canvas { width: 100% !important; height: 100% !important; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+<body>
+<div class="container">
+  <h1>GB Electricity Demand — Half-Hourly Outturn (1–25 June 2026)</h1>
+  <div class="chart-wrap"><canvas id="demand"></canvas></div>
+  <!-- <div class="chart-wrap"><canvas id="generation"></canvas></div> -->
+  <!-- <div class="chart-wrap"><canvas id="interconnector"></canvas></div> -->
+</div>
+<script>
+const COLORS = { demand: '#d62728', solar: '#ff7f0e', wind: '#2ca02c', interconnector: '#1f77b4' };
+
+function baseOptions(unit = 'MW') {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      x: { type: 'time', time: { unit: 'day', displayFormats: { day: 'd' } }, title: { display: true, text: 'Date' }, grid: { color: '#eee' } },
+      y: { title: { display: true, text: 'Megawatts (MW)' }, grid: { color: '#eee' } },
+    },
+    plugins: { legend: { display: true, position: 'top', onClick: Chart.defaults.plugins.legend.onClick, labels: { usePointStyle: true, padding: 20, font: { size: 13 } } }, tooltip: { mode: 'index', intersect: false } },
+    interaction: { mode: 'index', intersect: false },
+  };
+}
+
+function makeDataset(label, color, data) {
+  return { label, data, borderColor: color, backgroundColor: color + '20', borderWidth: 1, pointRadius: 0, fill: true, tension: 0.1 };
+}
+
+fetch('data/clean/demand.json')
+  .then(r => r.json())
+  .then(rows => {
+    const demandData = rows.map(r => ({x: r.datetime, y: r.demand}));
+
+    const daily = {};
+    rows.forEach(r => {
+      const day = r.datetime.slice(0, 10);
+      if (!daily[day]) daily[day] = [];
+      daily[day].push(r.demand);
+    });
+    const dailyAvg = Object.entries(daily).map(([day, vals]) => {
+      const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+      return { x: day + 'T00:00', y: avg };
+    });
+
+    const n = dailyAvg.length;
+    const xs = dailyAvg.map((p, i) => i);
+    const ys = dailyAvg.map(p => p.y);
+    const xMean = xs.reduce((a, b) => a + b, 0) / n;
+    const yMean = ys.reduce((a, b) => a + b, 0) / n;
+    let num = 0, den = 0;
+    for (let i = 0; i < n; i++) { num += (xs[i] - xMean) * (ys[i] - yMean); den += (xs[i] - xMean) ** 2; }
+    const slope = num / den;
+    const intercept = yMean - slope * xMean;
+    const trendData = dailyAvg.map((p, i) => ({ x: p.x, y: slope * i + intercept }));
+
+    new Chart(document.getElementById('demand'), {
+      type: 'line',
+      data: { datasets: [
+        { ...makeDataset('National Demand', COLORS.demand, demandData), hidden: true },
+        {
+          label: 'Daily Average',
+          data: dailyAvg,
+          borderColor: '#333',
+          backgroundColor: '#333',
+          showLine: false,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+        },
+        {
+          label: 'Trend Line',
+          data: trendData,
+          borderColor: '#333',
+          borderDash: [6, 4],
+          borderWidth: 2,
+          pointRadius: 0,
+          fill: false,
+          tension: 0,
+        },
+      ]},
+      options: baseOptions(),
+    });
+
+    // new Chart(document.getElementById('generation'), {
+    //   type: 'line',
+    //   data: { datasets: [
+    //     makeDataset('Solar', COLORS.solar, rows.map(r => ({x: r.datetime, y: r.solar}))),
+    //     makeDataset('Wind', COLORS.wind, rows.map(r => ({x: r.datetime, y: r.wind}))),
+    //   ]},
+    //   options: baseOptions(),
+    // });
+
+    // new Chart(document.getElementById('interconnector'), {
+    //   type: 'line',
+    //   data: { datasets: [makeDataset('Total Interconnector Flow (+ = import)', COLORS.interconnector, rows.map(r => ({x: r.datetime, y: r.interconnector})))] },
+    //   options: baseOptions(),
+    // });
+  });
+</script>
+</body>
+</html>
