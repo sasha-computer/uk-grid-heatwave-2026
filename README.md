@@ -1,4 +1,4 @@
-# uk-grid-heatwave-2026
+# How close did the UK grid come to breaking? (14 Jun - 16 Jul 2026)
 
 How close did the UK grid come to breaking during the 2026 summer heatwaves?
 
