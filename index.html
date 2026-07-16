@@ -17,100 +17,111 @@
 </head>
 <body>
 <div class="container">
-  <h1>GB Electricity Demand — Half-Hourly Outturn (1–25 June 2026)</h1>
+  <h1>GB Electricity Demand vs Temperature (14–25 June 2026)</h1>
   <div class="chart-wrap"><canvas id="demand"></canvas></div>
-  <!-- <div class="chart-wrap"><canvas id="generation"></canvas></div> -->
-  <!-- <div class="chart-wrap"><canvas id="interconnector"></canvas></div> -->
 </div>
 <script>
-const COLORS = { demand: '#d62728', solar: '#ff7f0e', wind: '#2ca02c', interconnector: '#1f77b4' };
+const COLORS = { demand: '#d62728', temp: '#ff6600', tempMax: '#cc0000', tempMin: '#3399ff' };
 
-function baseOptions(unit = 'MW') {
-  return {
-    responsive: true,
-    maintainAspectRatio: false,
-    scales: {
-      x: { type: 'time', time: { unit: 'day', displayFormats: { day: 'd' } }, title: { display: true, text: 'Date' }, grid: { color: '#eee' } },
-      y: { title: { display: true, text: 'Megawatts (MW)' }, grid: { color: '#eee' } },
-    },
-    plugins: { legend: { display: true, position: 'top', onClick: Chart.defaults.plugins.legend.onClick, labels: { usePointStyle: true, padding: 20, font: { size: 13 } } }, tooltip: { mode: 'index', intersect: false } },
-    interaction: { mode: 'index', intersect: false },
-  };
+const X_MIN = '2026-06-14T00:00';
+const X_MAX = '2026-06-25T23:30';
+
+function makeDataset(label, color, data, extra = {}) {
+  return { label, data, borderColor: color, backgroundColor: color + '20', borderWidth: 1, pointRadius: 0, fill: false, tension: 0.1, ...extra };
 }
 
-function makeDataset(label, color, data) {
-  return { label, data, borderColor: color, backgroundColor: color + '20', borderWidth: 1, pointRadius: 0, fill: true, tension: 0.1 };
-}
+Promise.all([
+  fetch('data/clean/demand.json').then(r => r.json()),
+  fetch('data/clean/temperatures.json').then(r => r.json()),
+]).then(([rows, temps]) => {
+  const demandData = rows
+    .filter(r => r.datetime >= '2026-06-14' && r.datetime <= '2026-06-25T23:59')
+    .map(r => ({x: r.datetime, y: r.demand}));
 
-fetch('data/clean/demand.json')
-  .then(r => r.json())
-  .then(rows => {
-    const demandData = rows.map(r => ({x: r.datetime, y: r.demand}));
-
-    const daily = {};
-    rows.forEach(r => {
-      const day = r.datetime.slice(0, 10);
-      if (!daily[day]) daily[day] = [];
-      daily[day].push(r.demand);
-    });
-    const dailyAvg = Object.entries(daily).map(([day, vals]) => {
-      const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-      return { x: day + 'T00:00', y: avg };
-    });
-
-    const n = dailyAvg.length;
-    const xs = dailyAvg.map((p, i) => i);
-    const ys = dailyAvg.map(p => p.y);
-    const xMean = xs.reduce((a, b) => a + b, 0) / n;
-    const yMean = ys.reduce((a, b) => a + b, 0) / n;
-    let num = 0, den = 0;
-    for (let i = 0; i < n; i++) { num += (xs[i] - xMean) * (ys[i] - yMean); den += (xs[i] - xMean) ** 2; }
-    const slope = num / den;
-    const intercept = yMean - slope * xMean;
-    const trendData = dailyAvg.map((p, i) => ({ x: p.x, y: slope * i + intercept }));
-
-    new Chart(document.getElementById('demand'), {
-      type: 'line',
-      data: { datasets: [
-        { ...makeDataset('National Demand', COLORS.demand, demandData), hidden: true },
-        {
-          label: 'Daily Average',
-          data: dailyAvg,
-          borderColor: '#333',
-          backgroundColor: '#333',
-          showLine: false,
-          pointRadius: 5,
-          pointHoverRadius: 7,
-        },
-        {
-          label: 'Trend Line',
-          data: trendData,
-          borderColor: '#333',
-          borderDash: [6, 4],
-          borderWidth: 2,
-          pointRadius: 0,
-          fill: false,
-          tension: 0,
-        },
-      ]},
-      options: baseOptions(),
-    });
-
-    // new Chart(document.getElementById('generation'), {
-    //   type: 'line',
-    //   data: { datasets: [
-    //     makeDataset('Solar', COLORS.solar, rows.map(r => ({x: r.datetime, y: r.solar}))),
-    //     makeDataset('Wind', COLORS.wind, rows.map(r => ({x: r.datetime, y: r.wind}))),
-    //   ]},
-    //   options: baseOptions(),
-    // });
-
-    // new Chart(document.getElementById('interconnector'), {
-    //   type: 'line',
-    //   data: { datasets: [makeDataset('Total Interconnector Flow (+ = import)', COLORS.interconnector, rows.map(r => ({x: r.datetime, y: r.interconnector})))] },
-    //   options: baseOptions(),
-    // });
+  const daily = {};
+  rows.forEach(r => {
+    if (r.datetime < '2026-06-14' || r.datetime > '2026-06-25T23:59') return;
+    const day = r.datetime.slice(0, 10);
+    if (!daily[day]) daily[day] = [];
+    daily[day].push(r.demand);
   });
+  const dailyAvg = Object.entries(daily).map(([day, vals]) => {
+    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+    return { x: day + 'T00:00', y: avg };
+  });
+
+  const n = dailyAvg.length;
+  const xs = dailyAvg.map((p, i) => i);
+  const ys = dailyAvg.map(p => p.y);
+  const xMean = xs.reduce((a, b) => a + b, 0) / n;
+  const yMean = ys.reduce((a, b) => a + b, 0) / n;
+  let num = 0, den = 0;
+  for (let i = 0; i < n; i++) { num += (xs[i] - xMean) * (ys[i] - yMean); den += (xs[i] - xMean) ** 2; }
+  const slope = num / den;
+  const intercept = yMean - slope * xMean;
+  const trendData = dailyAvg.map((p, i) => ({ x: p.x, y: slope * i + intercept }));
+
+  const tempMean = temps.map(t => ({x: t.date + 'T12:00', y: t.mean}));
+  const tempMax = temps.map(t => ({x: t.date + 'T12:00', y: t.max}));
+  const tempMin = temps.map(t => ({x: t.date + 'T12:00', y: t.min}));
+
+  new Chart(document.getElementById('demand'), {
+    type: 'line',
+    data: { datasets: [
+      { ...makeDataset('National Demand', COLORS.demand, demandData, { fill: true, hidden: true }) },
+      {
+        label: 'Daily Average Demand',
+        data: dailyAvg,
+        borderColor: '#333',
+        backgroundColor: '#333',
+        showLine: true,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        yAxisID: 'y',
+        borderWidth: 2,
+        fill: false,
+        tension: 0.1,
+      },
+      makeDataset('Daily Max Temp (°C)', COLORS.tempMax, tempMax, {
+        yAxisID: 'y1',
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        borderWidth: 2,
+      }),
+    ]},
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          type: 'time',
+          min: X_MIN,
+          max: X_MAX,
+          time: { unit: 'day', displayFormats: { day: 'd MMM' } },
+          title: { display: true, text: 'Date' },
+          grid: { color: '#eee' },
+        },
+        y: {
+          type: 'linear',
+          position: 'left',
+          title: { display: true, text: 'Megawatts (MW)' },
+          grid: { color: '#eee' },
+        },
+        y1: {
+          type: 'linear',
+          position: 'right',
+          title: { display: true, text: 'Temperature (°C)' },
+          grid: { drawOnChartArea: false },
+        },
+      },
+      plugins: {
+        legend: { display: true, position: 'top', onClick: Chart.defaults.plugins.legend.onClick, labels: { usePointStyle: true, padding: 20, font: { size: 13 } } },
+        tooltip: { mode: 'index', intersect: false },
+      },
+      interaction: { mode: 'index', intersect: false },
+    },
+  });
+});
 </script>
 </body>
 </html>
