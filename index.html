@@ -28,10 +28,50 @@ const X_MAX = '2026-07-16T00:00';
 const HALF_HOURLY_END = '2026-06-25T23:30';
 
 const EMN_DATES = ['2026-06-24', '2026-07-09'];
+const HEATWAVES = [
+  { start: '2026-06-19', end: '2026-06-26', label: 'Heatwave 1' },
+  { start: '2026-07-06', end: '2026-07-10', label: 'Heatwave 2' },
+];
 
 function makeDataset(label, color, data, extra = {}) {
   return { label, data, borderColor: color, backgroundColor: color + '20', borderWidth: 2, pointRadius: 0, fill: false, tension: 0.1, ...extra };
 }
+
+const heatwavePlugin = {
+  id: 'heatwaveBands',
+  beforeDatasetsDraw(chart) {
+    const { ctx, chartArea, scales } = chart;
+    if (!chartArea) return;
+    HEATWAVES.forEach(hw => {
+      const xStart = scales.x.getPixelForValue(new Date(hw.start + 'T00:00').getTime());
+      const xEnd = scales.x.getPixelForValue(new Date(hw.end + 'T23:59').getTime());
+      ctx.save();
+      ctx.fillStyle = 'rgba(255, 127, 14, 0.12)';
+      ctx.fillRect(xStart, chartArea.top, xEnd - xStart, chartArea.bottom - chartArea.top);
+      ctx.restore();
+    });
+  },
+};
+
+const dimPlugin = {
+  id: 'dimNonHeatwave',
+  afterDatasetsDraw(chart) {
+    const { ctx, chartArea, scales } = chart;
+    if (!chartArea) return;
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    HEATWAVES.forEach((hw, i) => {
+      const xEnd = scales.x.getPixelForValue(new Date(hw.end + 'T23:59').getTime());
+      const nextStart = i < HEATWAVES.length - 1
+        ? scales.x.getPixelForValue(new Date(HEATWAVES[i + 1].start + 'T00:00').getTime())
+        : chartArea.right;
+      ctx.fillRect(xEnd, chartArea.top, nextStart - xEnd, chartArea.bottom - chartArea.top);
+    });
+    const firstStart = scales.x.getPixelForValue(new Date(HEATWAVES[0].start + 'T00:00').getTime());
+    ctx.fillRect(chartArea.left, chartArea.top, firstStart - chartArea.left, chartArea.bottom - chartArea.top);
+    ctx.restore();
+  },
+};
 
 Promise.all([
   fetch('data/clean/demand.json').then(r => r.json()),
@@ -69,6 +109,7 @@ Promise.all([
 
   new Chart(document.getElementById('demand'), {
     type: 'line',
+    plugins: [heatwavePlugin, dimPlugin],
     data: { datasets: [
 
       // Daily average demand
@@ -108,11 +149,27 @@ Promise.all([
         label: 'Generation - Demand (MW)',
         data: opmr.map(o => ({x: o.date + 'T00:00', y: o.generator_availability - o.peak_demand_forecast})),
         borderColor: '#ff7f0e',
-        backgroundColor: '#ff7f0e20',
+        backgroundColor: '#ff7f0e30',
         showLine: true,
         pointRadius: 4,
         pointHoverRadius: 6,
         borderWidth: 2,
+        fill: true,
+        tension: 0.2,
+        yAxisID: 'y',
+      },
+
+      // Operating margin requirement
+      {
+        label: 'Operating Margin Requirement (MW)',
+        data: opmr.map(o => ({x: o.date + 'T00:00', y: o.opmr_total})),
+        borderColor: '#1f77b4',
+        backgroundColor: '#1f77b420',
+        showLine: true,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        borderWidth: 2,
+        borderDash: [5, 5],
         fill: false,
         tension: 0.2,
         yAxisID: 'y',
@@ -136,34 +193,8 @@ Promise.all([
           max: X_MAX,
           time: { unit: 'day', displayFormats: { day: 'd MMM' } },
           title: { display: true, text: 'Date' },
-          grid: {
-            color: (ctx) => {
-              const d = ctx.tick?.value;
-              if (!d) return '#eee';
-              const ds = new Date(d).toISOString().slice(0,10);
-              return EMN_DATES.includes(ds) ? '#1f77b4' : '#eee';
-            },
-            lineWidth: (ctx) => {
-              const d = ctx.tick?.value;
-              if (!d) return 1;
-              const ds = new Date(d).toISOString().slice(0,10);
-              return EMN_DATES.includes(ds) ? 2 : 1;
-            },
-          },
-          ticks: {
-            font: (ctx) => {
-              const d = ctx.tick?.value;
-              if (!d) return { size: 12 };
-              const ds = new Date(d).toISOString().slice(0,10);
-              return EMN_DATES.includes(ds) ? { size: 13, weight: 'bold' } : { size: 12 };
-            },
-            color: (ctx) => {
-              const d = ctx.tick?.value;
-              if (!d) return '#666';
-              const ds = new Date(d).toISOString().slice(0,10);
-              return EMN_DATES.includes(ds) ? '#1f77b4' : '#666';
-            },
-          },
+          grid: { color: '#eee' },
+          ticks: { font: { size: 12 }, color: '#666' },
         },
         y: {
           type: 'linear',

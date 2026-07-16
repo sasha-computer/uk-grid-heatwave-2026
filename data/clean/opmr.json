@@ -3,198 +3,231 @@
     "date": "2026-06-14",
     "generator_availability": 53874,
     "peak_demand_forecast": 25449,
-    "national_surplus": 13545
+    "national_surplus": 13545,
+    "opmr_total": 14880
   },
   {
     "date": "2026-06-15",
     "generator_availability": 33197,
     "peak_demand_forecast": 27960,
-    "national_surplus": 1005
+    "national_surplus": 1005,
+    "opmr_total": 4232
   },
   {
     "date": "2026-06-16",
     "generator_availability": 54649,
     "peak_demand_forecast": 28670,
-    "national_surplus": 11791
+    "national_surplus": 11791,
+    "opmr_total": 14188
   },
   {
     "date": "2026-06-17",
     "generator_availability": 53210,
     "peak_demand_forecast": 28660,
-    "national_surplus": 10478
+    "national_surplus": 10478,
+    "opmr_total": 14072
   },
   {
     "date": "2026-06-18",
     "generator_availability": 53817,
     "peak_demand_forecast": 27829,
-    "national_surplus": 11896
+    "national_surplus": 11896,
+    "opmr_total": 14092
   },
   {
     "date": "2026-06-19",
     "generator_availability": 38883,
     "peak_demand_forecast": 26880,
-    "national_surplus": 7057
+    "national_surplus": 7057,
+    "opmr_total": 4946
   },
   {
     "date": "2026-06-20",
     "generator_availability": 34637,
     "peak_demand_forecast": 25622,
-    "national_surplus": 4563
+    "national_surplus": 4563,
+    "opmr_total": 4452
   },
   {
     "date": "2026-06-21",
     "generator_availability": 36429,
     "peak_demand_forecast": 25809,
-    "national_surplus": 6481
+    "national_surplus": 6481,
+    "opmr_total": 4139
   },
   {
     "date": "2026-06-22",
     "generator_availability": 37422,
     "peak_demand_forecast": 29353,
-    "national_surplus": 3786
+    "national_surplus": 3786,
+    "opmr_total": 4283
   },
   {
     "date": "2026-06-23",
     "generator_availability": 36420,
     "peak_demand_forecast": 30276,
-    "national_surplus": 1861
+    "national_surplus": 1861,
+    "opmr_total": 4283
   },
   {
     "date": "2026-06-24",
     "generator_availability": 34596,
     "peak_demand_forecast": 31488,
-    "national_surplus": -1094
+    "national_surplus": -1094,
+    "opmr_total": 4202
   },
   {
     "date": "2026-06-25",
     "generator_availability": 43124,
     "peak_demand_forecast": 30080,
-    "national_surplus": 7806
+    "national_surplus": 7806,
+    "opmr_total": 5238
   },
   {
     "date": "2026-06-26",
     "generator_availability": 39246,
     "peak_demand_forecast": 29792,
-    "national_surplus": 4815
+    "national_surplus": 4815,
+    "opmr_total": 4639
   },
   {
     "date": "2026-06-27",
     "generator_availability": 42823,
     "peak_demand_forecast": 26360,
-    "national_surplus": 7524
+    "national_surplus": 7524,
+    "opmr_total": 8939
   },
   {
     "date": "2026-06-28",
     "generator_availability": 41574,
     "peak_demand_forecast": 25538,
-    "national_surplus": 7755
+    "national_surplus": 7755,
+    "opmr_total": 8281
   },
   {
     "date": "2026-06-29",
     "generator_availability": 35400,
     "peak_demand_forecast": 28848,
-    "national_surplus": 2525
+    "national_surplus": 2525,
+    "opmr_total": 4027
   },
   {
     "date": "2026-06-30",
     "generator_availability": 34902,
     "peak_demand_forecast": 29462,
-    "national_surplus": 1157
+    "national_surplus": 1157,
+    "opmr_total": 4283
   },
   {
     "date": "2026-07-01",
     "generator_availability": 39960,
     "peak_demand_forecast": 27587,
-    "national_surplus": 4605
+    "national_surplus": 4605,
+    "opmr_total": 7768
   },
   {
     "date": "2026-07-02",
     "generator_availability": 37015,
     "peak_demand_forecast": 27769,
-    "national_surplus": 2293
+    "national_surplus": 2293,
+    "opmr_total": 6953
   },
   {
     "date": "2026-07-03",
     "generator_availability": 40414,
     "peak_demand_forecast": 25675,
-    "national_surplus": 7331
+    "national_surplus": 7331,
+    "opmr_total": 7408
   },
   {
     "date": "2026-07-04",
     "generator_availability": 44685,
     "peak_demand_forecast": 23122,
-    "national_surplus": 13344
+    "national_surplus": 13344,
+    "opmr_total": 8219
   },
   {
     "date": "2026-07-05",
     "generator_availability": 41312,
     "peak_demand_forecast": 24314,
-    "national_surplus": 10357
+    "national_surplus": 10357,
+    "opmr_total": 6641
   },
   {
     "date": "2026-07-06",
     "generator_availability": 42094,
     "peak_demand_forecast": 26968,
-    "national_surplus": 7511
+    "national_surplus": 7511,
+    "opmr_total": 7615
   },
   {
     "date": "2026-07-07",
     "generator_availability": 38228,
     "peak_demand_forecast": 27585,
-    "national_surplus": 5822
+    "national_surplus": 5822,
+    "opmr_total": 4821
   },
   {
     "date": "2026-07-08",
     "generator_availability": 35526,
     "peak_demand_forecast": 28870,
-    "national_surplus": 2681
+    "national_surplus": 2681,
+    "opmr_total": 3975
   },
   {
     "date": "2026-07-09",
     "generator_availability": 36366,
     "peak_demand_forecast": 28940,
-    "national_surplus": 3425
+    "national_surplus": 3425,
+    "opmr_total": 4001
   },
   {
     "date": "2026-07-10",
     "generator_availability": 36077,
     "peak_demand_forecast": 28359,
-    "national_surplus": 3679
+    "national_surplus": 3679,
+    "opmr_total": 4039
   },
   {
     "date": "2026-07-11",
     "generator_availability": 38655,
     "peak_demand_forecast": 26234,
-    "national_surplus": 8230
+    "national_surplus": 8230,
+    "opmr_total": 4191
   },
   {
     "date": "2026-07-12",
     "generator_availability": 42119,
     "peak_demand_forecast": 26053,
-    "national_surplus": 11766
+    "national_surplus": 11766,
+    "opmr_total": 4300
   },
   {
     "date": "2026-07-13",
     "generator_availability": 41473,
     "peak_demand_forecast": 28962,
-    "national_surplus": 7752
+    "national_surplus": 7752,
+    "opmr_total": 4759
   },
   {
     "date": "2026-07-14",
     "generator_availability": 41893,
     "peak_demand_forecast": 28558,
-    "national_surplus": 9152
+    "national_surplus": 9152,
+    "opmr_total": 4183
   },
   {
     "date": "2026-07-15",
     "generator_availability": 39581,
     "peak_demand_forecast": 29098,
-    "national_surplus": 6411
+    "national_surplus": 6411,
+    "opmr_total": 4072
   },
   {
     "date": "2026-07-16",
     "generator_availability": 37694,
     "peak_demand_forecast": 29221,
-    "national_surplus": 4516
+    "national_surplus": 4516,
+    "opmr_total": 3957
   }
 ]
