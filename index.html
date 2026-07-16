@@ -3,14 +3,32 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GB Grid — Summer 2026</title>
+<title>GB Grid - Summer 2026</title>
 <style>
   html, body { height: 100%; }
   body { font-family: system-ui, sans-serif; margin: 0; padding: 12px; background: #f5f5f5; box-sizing: border-box; }
   .container { width: 100%; height: 100%; display: flex; flex-direction: column; }
   h1 { font-size: 16px; margin: 0 0 8px 0; flex-shrink: 0; }
+  .main { display: flex; flex: 1; gap: 12px; min-height: 0; }
   .chart-wrap { background: #fff; border-radius: 8px; padding: 12px; flex: 1; box-shadow: 0 1px 3px rgba(0,0,0,0.1); min-height: 0; }
   .chart-wrap canvas { width: 100% !important; height: 100% !important; }
+  .sidebar { width: 280px; flex-shrink: 0; display: flex; flex-direction: column; gap: 12px; font-family: Arial, sans-serif; }
+  .widget { background: #fff; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  .widget h2 { font-size: 13px; margin: 0 0 12px 0; text-transform: uppercase; letter-spacing: 0.5px; color: #666; text-align: center; font-family: Arial, sans-serif; }
+  .clock-container { display: flex; flex-direction: column; align-items: center; }
+  .clock-svg { width: 180px; height: 180px; }
+  .clock-time { font-size: 28px; font-weight: bold; margin-top: 8px; font-variant-numeric: tabular-nums; text-align: center; font-family: Arial, sans-serif; }
+  .clock-label { font-size: 11px; color: #999; margin-top: 2px; }
+  .metrics { display: flex; flex-direction: column; gap: 14px; }
+  .metric { display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .metric-label { font-size: 11px; color: #999; text-transform: uppercase; letter-spacing: 0.5px; }
+  .metric-value { font-size: 22px; font-weight: bold; font-variant-numeric: tabular-nums; }
+  .metric-value.danger { color: #d62728; }
+  .metric-value.warn { color: #ff7f0e; }
+  .metric-value.safe { color: #2ca02c; }
+  .metric-sub { font-size: 11px; color: #aaa; }
+  .selected-date { font-size: 13px; color: #666; margin-bottom: 12px; font-weight: 600; text-align: center; font-family: Arial, sans-serif; }
+  .no-selection { font-size: 13px; color: #aaa; text-align: center; padding: 20px 0; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
@@ -18,20 +36,179 @@
 <body>
 <div class="container">
   <h1>GB Grid: Demand, Generation & Temperature (14 Jun – 16 Jul 2026)</h1>
-  <div class="chart-wrap"><canvas id="demand"></canvas></div>
+  <div class="main">
+    <div class="sidebar">
+      <div class="widget">
+        <h2>Seconds to (NESO's) Midnight <a href="https://en.wikipedia.org/wiki/Doomsday_Clock" target="_blank" style="color:#1f77b4; text-decoration:none; font-weight:bold; font-size:11px; font-style:italic;">What is this?*</a></h2>
+        <div class="clock-container">
+          <svg class="clock-svg" viewBox="0 0 200 200">
+            <circle cx="100" cy="100" r="90" fill="#f8f8f8" stroke="#ddd" stroke-width="2"/>
+            <circle cx="100" cy="100" r="85" fill="none" stroke="#eee" stroke-width="1"/>
+            <g id="clock-ticks"></g>
+            <line id="clock-hour" x1="100" y1="100" x2="100" y2="55" stroke="#333" stroke-width="3" stroke-linecap="round"/>
+            <line id="clock-minute" x1="100" y1="100" x2="100" y2="35" stroke="#666" stroke-width="2" stroke-linecap="round"/>
+            <line id="clock-second" x1="100" y1="100" x2="100" y2="25" stroke="#d62728" stroke-width="1.5" stroke-linecap="round"/>
+            <circle cx="100" cy="100" r="4" fill="#333"/>
+          </svg>
+          <div class="clock-time" id="clock-time">--</div>
+          <div style="font-size:13px;color:#999;margin-top:-4px;">seconds</div>
+          <div class="clock-label" id="clock-label"></div>
+        </div>
+      </div>
+      <div class="widget" id="metrics-widget">
+        <div id="metrics-content">
+          <div class="selected-date" id="selected-date"></div>
+          <div class="metrics">
+            <div class="metric">
+              <div class="metric-label">Native Surplus</div>
+              <div class="metric-value" id="metric-gap"></div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">NESO Buffer Requirement</div>
+              <div class="metric-value" id="metric-buffer"></div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Seconds to Midnight</div>
+              <div class="metric-value" id="metric-stm"></div>
+              <div id="emn-notice" style="display:none; margin-top:6px; font-size:12px; color:#d62728;">
+                <a href="https://en.wikipedia.org/wiki/Operating_reserve#Electricity_Margin_Notice" target="_blank" style="color:#d62728; text-decoration:underline;">Electricity Margin Notice (EMN)</a> was issued
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="chart-wrap"><canvas id="demand"></canvas></div>
+  </div>
 </div>
 <script>
 const COLORS = { demand: '#d62728', demandDaily: '#333', tempMax: '#cc0000', genAvail: '#2ca02c', genAvailDaily: '#1a8c1a', surplus: '#9467bd' };
 
 const X_MIN = '2026-06-14T00:00';
 const X_MAX = '2026-07-16T00:00';
-const HALF_HOURLY_END = '2026-06-25T23:30';
 
 const EMN_DATES = ['2026-06-24', '2026-07-09'];
 const HEATWAVES = [
   { start: '2026-06-19', end: '2026-06-26', label: 'Heatwave 1' },
   { start: '2026-07-06', end: '2026-07-10', label: 'Heatwave 2' },
 ];
+
+// Build OPMR lookup by date
+let opmrByDate = {};
+
+// Seconds to midnight transformation:
+// Like the Doomsday Clock - always near midnight
+// surplus = 0 MW → 00:00:00 (midnight = power cut)
+// surplus = 1000 MW → ~23:54 (6 min to midnight)
+// surplus = 5000 MW → ~23:46 (14 min to midnight)
+// surplus = 15000+ MW → ~23:45 (15 min, basically safe)
+// Formula: seconds_before_midnight = 900 * (1 - exp(-surplus/2000))
+// Negative surplus = past midnight
+const SECONDS_FULL = 86400;
+const SURPLUS_SCALE = 2000;
+const MAX_SECONDS_BEFORE = 900; // 15 minutes max
+
+function surplusToSeconds(surplus) {
+  if (surplus <= 0) return surplus;
+  return Math.round(MAX_SECONDS_BEFORE * (1 - Math.exp(-surplus / SURPLUS_SCALE)));
+}
+
+function secondsToClockTime(secondsBeforeMidnight) {
+  if (secondsBeforeMidnight < 0) return { display: '0' };
+  return { display: String(Math.round(secondsBeforeMidnight)) };
+}
+
+function updateClock(secondsBeforeMidnight) {
+  const cl = secondsToClockTime(secondsBeforeMidnight);
+  const el = document.getElementById('clock-time');
+  el.textContent = cl.display;
+
+  // Clock hands on a 12h face: midnight at top (12 o'clock)
+  // Map seconds_before_midnight (0-900) to a small arc near midnight
+  // 0s = midnight (hand straight up), 900s = 23:45 (hand slightly back from 12)
+  const fraction = Math.max(0, Math.min(1, secondsBeforeMidnight / MAX_SECONDS_BEFORE));
+  // Hour hand: near 12, rotates slightly backward as we get further from midnight
+  // 0 → 0deg (midnight), 900s → ~7.5deg (23:45 is 1/4 of the way from 12 toward 11)
+  const hourAngle = -fraction * 7.5;
+  // Minute hand: 0 → 0deg (at 12), 900s = 15 min → -90deg (at 9)
+  const minuteAngle = -fraction * 90;
+  // Second hand: maps the seconds within the current minute
+  const secFraction = (SECONDS_FULL - secondsBeforeMidnight) % 60 / 60;
+  const secondAngle = secFraction * 360;
+
+  const hourEl = document.getElementById('clock-hour');
+  const minEl = document.getElementById('clock-minute');
+  const secEl = document.getElementById('clock-second');
+
+  hourEl.setAttribute('transform', `rotate(${hourAngle} 100 100)`);
+  minEl.setAttribute('transform', `rotate(${minuteAngle} 100 100)`);
+  secEl.setAttribute('transform', `rotate(${secondAngle} 100 100)`);
+
+  // Danger thresholds
+  if (secondsBeforeMidnight < 0) {
+    el.style.color = '#d62728';
+  } else if (secondsBeforeMidnight < 120) {
+    el.style.color = '#d62728';
+  } else if (secondsBeforeMidnight < 420) {
+    el.style.color = '#ff7f0e';
+  } else {
+    el.style.color = '#333';
+  }
+}
+
+// Draw clock tick marks
+(function drawTicks() {
+  const g = document.getElementById('clock-ticks');
+  for (let i = 0; i < 12; i++) {
+    const angle = (i * 30) * Math.PI / 180;
+    const x1 = 100 + Math.sin(angle) * 82;
+    const y1 = 100 - Math.cos(angle) * 82;
+    const x2 = 100 + Math.sin(angle) * 88;
+    const y2 = 100 - Math.cos(angle) * 88;
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+    line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+    line.setAttribute('stroke', i % 3 === 0 ? '#333' : '#ccc');
+    line.setAttribute('stroke-width', i % 3 === 0 ? 2 : 1);
+    g.appendChild(line);
+  }
+})();
+
+function formatMW(v) {
+  if (v >= 1000) return (v / 1000).toFixed(1) + ' GW';
+  return v + ' MW';
+}
+
+function updateMetrics(dateStr) {
+  const o = opmrByDate[dateStr];
+  if (!o) return;
+
+  const gap = o.generator_availability - o.peak_demand_forecast;
+  const buffer = o.opmr_total;
+  const surplus = o.national_surplus;
+  const seconds = surplusToSeconds(surplus);
+
+  document.getElementById('selected-date').textContent = new Date(dateStr + 'T12:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+
+  const gapEl = document.getElementById('metric-gap');
+  gapEl.textContent = formatMW(gap);
+  gapEl.className = 'metric-value ' + (gap < buffer ? 'danger' : gap < buffer * 2 ? 'warn' : 'safe');
+
+  const bufEl = document.getElementById('metric-buffer');
+  bufEl.textContent = formatMW(buffer);
+  bufEl.className = 'metric-value';
+
+  const stmEl = document.getElementById('metric-stm');
+  const cl = secondsToClockTime(seconds);
+  stmEl.textContent = cl.display;
+  stmEl.className = 'metric-value ' + (seconds < 0 ? 'danger' : seconds < 120 ? 'danger' : seconds < 420 ? 'warn' : 'safe');
+
+  document.getElementById('emn-notice').style.display = (seconds <= 0) ? 'block' : 'none';
+
+  updateClock(seconds);
+
+  document.getElementById('metrics-content').style.display = 'block';
+}
 
 function makeDataset(label, color, data, extra = {}) {
   return { label, data, borderColor: color, backgroundColor: color + '20', borderWidth: 2, pointRadius: 0, fill: false, tension: 0.1, ...extra };
@@ -48,6 +225,26 @@ const heatwavePlugin = {
       ctx.save();
       ctx.fillStyle = 'rgba(255, 127, 14, 0.12)';
       ctx.fillRect(xStart, chartArea.top, xEnd - xStart, chartArea.bottom - chartArea.top);
+      ctx.restore();
+    });
+  },
+};
+
+const emnLinePlugin = {
+  id: 'emnLines',
+  afterDatasetsDraw(chart) {
+    const { ctx, chartArea, scales } = chart;
+    if (!chartArea) return;
+    EMN_DATES.forEach(d => {
+      const x = scales.x.getPixelForValue(new Date(d + 'T00:00').getTime());
+      ctx.save();
+      ctx.strokeStyle = '#1f77b4';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(x, chartArea.bottom);
+      ctx.lineTo(x, chartArea.top);
+      ctx.stroke();
       ctx.restore();
     });
   },
@@ -79,6 +276,8 @@ Promise.all([
   fetch('data/clean/opmr.json').then(r => r.json()),
 ]).then(([rows, temps, opmr]) => {
 
+  opmr.forEach(o => { opmrByDate[o.date] = o; });
+
   // --- Half-hourly data (Jun 14-25) ---
   const demandHH = rows.map(r => ({x: r.datetime, y: r.demand}));
 
@@ -98,55 +297,20 @@ Promise.all([
   const genAvailAll = opmr.map(o => ({x: o.date + 'T00:00', y: o.generator_availability}));
   const surplusAll = opmr.map(o => ({x: o.date + 'T00:00', y: o.national_surplus}));
 
-  // Daily average demand: use half-hourly actuals for Jun 14-25, OPMR forecast for Jun 26-Jul 16
-  const dailyAvgCombined = [
-    ...dailyAvgHH,
-    ...dailyAvgAll.filter(d => d.x.slice(0,10) > '2026-06-25'),
-  ];
-
   // Temperature
   const tempMax = temps.map(t => ({x: t.date + 'T00:00', y: t.max}));
 
+  // Default to June 24 (the worst day, EMN issued)
+  updateMetrics('2026-06-24');
+
   new Chart(document.getElementById('demand'), {
     type: 'line',
-    plugins: [heatwavePlugin, dimPlugin],
+    plugins: [heatwavePlugin, dimPlugin, emnLinePlugin],
     data: { datasets: [
 
-      // Daily average demand
+      // Native Surplus (generator availability - demand)
       {
-        label: 'Daily Avg Demand',
-        data: dailyAvgHH,
-        borderColor: COLORS.demandDaily,
-        backgroundColor: COLORS.demandDaily,
-        showLine: true,
-        pointRadius: 5,
-        pointHoverRadius: 7,
-        borderWidth: 2,
-        fill: false,
-        tension: 0.1,
-        yAxisID: 'y',
-        hidden: true,
-      },
-
-      // Generator availability (full range)
-      {
-        label: 'Generator Availability (MW)',
-        data: genAvailAll,
-        borderColor: COLORS.genAvail,
-        backgroundColor: COLORS.genAvail,
-        showLine: true,
-        pointRadius: 5,
-        pointHoverRadius: 7,
-        borderWidth: 2,
-        fill: false,
-        tension: 0.1,
-        yAxisID: 'y',
-        hidden: true,
-      },
-
-      // Generation margin (generator availability - demand)
-      {
-        label: 'Generation - Demand (MW)',
+        label: 'Native Surplus (MW)',
         data: opmr.map(o => ({x: o.date + 'T00:00', y: o.generator_availability - o.peak_demand_forecast})),
         borderColor: '#ff7f0e',
         backgroundColor: '#ff7f0e30',
@@ -186,6 +350,16 @@ Promise.all([
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      onHover: (event, elements, chart) => {
+        if (!event || event.x === undefined) return;
+        const xValue = chart.scales.x.getValueForPixel(event.x);
+        if (xValue === undefined) return;
+        const date = new Date(xValue);
+        const ds = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+        if (opmrByDate[ds]) {
+          updateMetrics(ds);
+        }
+      },
       scales: {
         x: {
           type: 'time',

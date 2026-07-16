@@ -41,6 +41,6 @@ uv run python main.py
 
 Output in `data/clean/`:
 
-- `opmr_daily.parquet` — daily operating margin and national surplus
-- `demand.parquet` — half-hourly demand outturn (through June 25, ~21 days arrears)
-- `demand_forecast.parquet` — day-ahead demand forecasts
+- `opmr_daily.parquet` - daily operating margin and national surplus
+- `demand.parquet` - half-hourly demand outturn (through June 25, ~21 days arrears)
+- `demand_forecast.parquet` - day-ahead demand forecasts

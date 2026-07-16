@@ -54,7 +54,7 @@ for ax in axes:
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%d Jun"))
     ax.xaxis.set_minor_locator(mdates.DayLocator())
 
-axes[0].set_title("GB Electricity Demand — Half-Hourly Outturn (1–25 June 2026)", fontsize=14, fontweight="bold", pad=15)
+axes[0].set_title("GB Electricity Demand - Half-Hourly Outturn (1-25 June 2026)", fontsize=14, fontweight="bold", pad=15)
 
 fig.tight_layout()
 fig.subplots_adjust(top=0.93)
