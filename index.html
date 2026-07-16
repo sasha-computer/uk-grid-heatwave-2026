@@ -156,7 +156,7 @@ Promise.all([
         borderWidth: 2,
         fill: true,
         tension: 0.2,
-        yAxisID: 'y',
+        yAxisID: 'y2',
       },
 
       // Operating margin requirement
@@ -172,7 +172,7 @@ Promise.all([
         borderDash: [5, 5],
         fill: false,
         tension: 0.2,
-        yAxisID: 'y',
+        yAxisID: 'y2',
       },
 
       // Temperature on secondary axis
@@ -194,7 +194,22 @@ Promise.all([
           time: { unit: 'day', displayFormats: { day: 'd MMM' } },
           title: { display: true, text: 'Date' },
           grid: { color: '#eee' },
-          ticks: { font: { size: 12 }, color: '#666' },
+          ticks: {
+            font: (ctx) => {
+              const d = ctx.tick?.value;
+              if (!d) return { size: 12 };
+              const date = new Date(d);
+              const ds = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+              return EMN_DATES.includes(ds) ? { size: 13, weight: 'bold' } : { size: 12 };
+            },
+            color: (ctx) => {
+              const d = ctx.tick?.value;
+              if (!d) return '#666';
+              const date = new Date(d);
+              const ds = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+              return EMN_DATES.includes(ds) ? '#1f77b4' : '#666';
+            },
+          },
         },
         y: {
           type: 'linear',
@@ -207,6 +222,13 @@ Promise.all([
           position: 'right',
           title: { display: true, text: 'Temperature (°C)' },
           grid: { drawOnChartArea: false },
+        },
+        y2: {
+          type: 'linear',
+          position: 'right',
+          title: { display: true, text: 'Margin (MW)' },
+          grid: { drawOnChartArea: false },
+          offset: true,
         },
       },
       plugins: {
